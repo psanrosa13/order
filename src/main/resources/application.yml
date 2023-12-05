@@ -1,0 +1,78 @@
+payments:
+  service:
+    url: http://localhost:8081
+
+resilience4j.circuitbreaker:
+  instances:
+#    paymment:
+#      registerHealthIndicator: true
+#      slidingWindowSize: 100
+    payment:
+      registerHealthIndicator: true
+      slidingWindowSize: 10
+      permittedNumberOfCallsInHalfOpenState: 3
+      slidingWindowType: TIME_BASED
+      minimumNumberOfCalls: 20
+      waitDurationInOpenState: 50s
+      failureRateThreshold: 50
+      eventConsumerBufferSize: 10
+      recordFailurePredicate: io.github.robwin.exception.RecordFailurePredicate
+
+resilience4j.retry:
+  instances:
+    payment:
+      maxAttempts: 3
+      waitDuration: 10s
+      enableExponentialBackoff: true
+      exponentialBackoffMultiplier: 2
+      retryExceptions:
+        - org.springframework.web.client.HttpServerErrorException
+        - java.io.IOException
+      ignoreExceptions:
+        - org.apache.tomcat.util.http.fileupload.util.mime.ParseException
+#    payment:
+#      maxAttempts: 3
+#      waitDuration: 10s
+#      retryExceptions:
+#        - org.springframework.web.client.HttpServerErrorException
+#        - java.io.IOException
+#      ignoreExceptions:
+#        - io.github.robwin.exception.BusinessException
+
+resilience4j.bulkhead:
+  instances:
+    payment:
+      maxConcurrentCalls: 10
+#    payment:
+#      maxWaitDuration: 10ms
+#      maxConcurrentCalls: 20
+
+#resilience4j.thread-pool-bulkhead:
+#  instances:
+#    payment:
+#      maxThreadPoolSize: 1
+#      coreThreadPoolSize: 1
+#      queueCapacity: 1
+#      writableStackTraceEnabled: true
+
+resilience4j.ratelimiter:
+  instances:
+    payment:
+      limitForPeriod: 10
+      limitRefreshPeriod: 1s
+      timeoutDuration: 0
+      registerHealthIndicator: true
+      eventConsumerBufferSize: 100
+#    payment:
+#      limitForPeriod: 6
+#      limitRefreshPeriod: 500ms
+#      timeoutDuration: 3s
+
+resilience4j.timelimiter:
+  instances:
+    payment:
+      timeoutDuration: 2s
+      cancelRunningFuture: true
+#    payment:
+#      timeoutDuration: 1s
+#      cancelRunningFuture: false
