@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.concurrent.CompletableFuture;
+
 @Service
 public class PaymentService {
 
@@ -25,18 +27,61 @@ public class PaymentService {
     }
 
     @CircuitBreaker(name = "payment", fallbackMethod = "fallback")
-    @RateLimiter(name = "payment")
-    @Bulkhead(name = "payment", fallbackMethod = "fallback")
-    @Retry(name = "payment")
-    @TimeLimiter(name = "payment")
-    public boolean authorize(NewOrder newOrder){
-
+    public Boolean authorizeWithCircuitBreaker(NewOrder newOrder) {
         PaymentDetails paymentDetails = new PaymentDetails(newOrder.paymentType(), newOrder.paymentValue().toString() );
 
-        String url = paymentsServiceUrl+"/api/payments/authorize";
+        String url = paymentsServiceUrl+"/api/payments/process";
 
         String authorized = restTemplate.postForObject(url, paymentDetails, String.class);
 
         return Boolean.parseBoolean(authorized);
+    }
+
+    @Retry(name = "payment", fallbackMethod = "fallback")
+    public Boolean authorizeWithRetry(NewOrder newOrder) {
+        PaymentDetails paymentDetails = new PaymentDetails(newOrder.paymentType(), newOrder.paymentValue().toString() );
+
+        String url = paymentsServiceUrl+"/api/payments/process";
+        String authorized = restTemplate.postForObject(url, paymentDetails, String.class);
+
+        return Boolean.parseBoolean(authorized);
+    }
+
+    @TimeLimiter(name = "payment")
+    public CompletableFuture<Boolean> authorizeTimeLimiter(NewOrder newOrder) {
+        PaymentDetails paymentDetails = new PaymentDetails(newOrder.paymentType(), newOrder.paymentValue().toString() );
+
+        String url = paymentsServiceUrl+"/api/payments/process";
+        String authorized = restTemplate.postForObject(url, paymentDetails, String.class);
+
+        return CompletableFuture.supplyAsync(() -> Boolean.parseBoolean(authorized));
+    }
+
+    public Boolean authorize(NewOrder newOrder) {
+        PaymentDetails paymentDetails = new PaymentDetails(newOrder.paymentType(), newOrder.paymentValue().toString() );
+
+        String url = paymentsServiceUrl+"/api/payments/process";
+        String authorized = restTemplate.postForObject(url, paymentDetails, String.class);
+
+        return Boolean.parseBoolean(authorized);
+    }
+
+
+    @CircuitBreaker(name = "payment", fallbackMethod = "fallback")
+    @RateLimiter(name = "payment")
+    @Bulkhead(name = "payment")
+    @Retry(name = "payment")
+    @TimeLimiter(name = "payment")
+    public CompletableFuture<Boolean> authorizeAll(NewOrder newOrder) {
+        PaymentDetails paymentDetails = new PaymentDetails(newOrder.paymentType(), newOrder.paymentValue().toString() );
+
+        String url = paymentsServiceUrl+"/api/payments/process";
+        String authorized = restTemplate.postForObject(url, paymentDetails, String.class);
+
+        return CompletableFuture.supplyAsync(() -> Boolean.parseBoolean(authorized));
+    }
+
+    public Boolean fallback(NewOrder newOrder, Exception exception){
+        return Boolean.FALSE;
     }
 }
